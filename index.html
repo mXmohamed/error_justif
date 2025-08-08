@@ -1,0 +1,1298 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Contrôle des Livrables CSV</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+            font-size: 2.5rem;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .upload-section {
+            background: #f8f9ff;
+            border-radius: 10px;
+            padding: 25px;
+            margin-bottom: 30px;
+            border: 2px dashed #667eea;
+            transition: all 0.3s ease;
+        }
+
+        .file-input-group {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .file-input-item {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #e0e0e0;
+            transition: all 0.3s ease;
+        }
+
+        .file-input-item:hover {
+            border-color: #667eea;
+            box-shadow: 0 2px 10px rgba(102, 126, 234, 0.1);
+        }
+
+        .file-input-item label {
+            display: block;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 8px;
+        }
+
+        .file-input-item input[type="file"] {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background: #fafafa;
+        }
+
+        .control-section {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+
+        .control-card {
+            background: linear-gradient(135deg, #fff 0%, #f8f9ff 100%);
+            border-radius: 12px;
+            padding: 25px;
+            border: 1px solid #e0e6ff;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+            transition: all 0.3s ease;
+        }
+
+        .control-card h3 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 1.3rem;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 10px;
+        }
+
+        .control-card p {
+            color: #666;
+            margin-bottom: 20px;
+            line-height: 1.6;
+        }
+
+        .btn {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            margin: 5px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .results-section {
+            background: white;
+            border-radius: 10px;
+            padding: 25px;
+            margin-top: 20px;
+            display: none;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 10px;
+            background: #f0f0f0;
+            border-radius: 5px;
+            overflow: hidden;
+            margin: 20px 0;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+
+        .status-message {
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+            font-weight: 500;
+        }
+
+        .status-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .status-error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .status-info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+
+        .results-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .results-table th,
+        .results-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .results-table th {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            font-weight: 600;
+        }
+
+        .results-table tr:hover {
+            background: #f8f9ff;
+        }
+
+        .highlight-error {
+            background: #ffe6e6 !important;
+        }
+
+        .highlight-success {
+            background: #e6ffe6 !important;
+        }
+
+        .file-status {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            margin-left: 10px;
+        }
+
+        .file-loaded {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .file-missing {
+            background: #f8d7da;
+            color: #721c24;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Contrôle des Livrables CSV</h1>
+        
+        <div class="upload-section">
+            <h2>📁 Chargement des fichiers</h2>
+            <div class="file-input-group">
+                <div class="file-input-item">
+                    <label for="adresse-file">t_adresse_combined.csv</label>
+                    <input type="file" id="adresse-file" accept=".csv" />
+                    <span id="adresse-status" class="file-status file-missing">Non chargé</span>
+                </div>
+                <div class="file-input-item">
+                    <label for="locale-file">t_locale_combined.csv</label>
+                    <input type="file" id="locale-file" accept=".csv" />
+                    <span id="locale-status" class="file-status file-missing">Non chargé</span>
+                </div>
+                <div class="file-input-item">
+                    <label for="ptech-file">t_ptech_combined.csv</label>
+                    <input type="file" id="ptech-file" accept=".csv" />
+                    <span id="ptech-status" class="file-status file-missing">Non chargé</span>
+                </div>
+                <div class="file-input-item">
+                    <label for="ebp-file">t_ebp_combined.csv</label>
+                    <input type="file" id="ebp-file" accept=".csv" />
+                    <span id="ebp-status" class="file-status file-missing">Non chargé</span>
+                </div>
+                <div class="file-input-item">
+                    <label for="requette3-file">requette_3.csv</label>
+                    <input type="file" id="requette3-file" accept=".csv" />
+                    <span id="requette3-status" class="file-status file-missing">Non chargé</span>
+                </div>
+                <div class="file-input-item">
+                    <label for="requette8-file">requette_8.csv</label>
+                    <input type="file" id="requette8-file" accept=".csv" />
+                    <span id="requette8-status" class="file-status file-missing">Non chargé</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="control-section">
+            <div class="control-card">
+                <h3>🏠 Contrôle 1: 3-SIG NB Logements GRACE</h3>
+                <p>
+                    Ce contrôle compare le nombre de logements entre t_adresse et t_locale :<br>
+                    • Récupération du nombre de logements FTTH déclaré (ad_nbfotth)<br>
+                    • Comptage des locaux FTTH par adresse dans t_locale<br>
+                    • Identification des incohérences
+                </p>
+                <div style="margin: 15px 0;">
+                    <button class="btn" id="control1-btn" onclick="executeControl1()">
+                        🔍 Étape 1: Identifier les cas en erreur
+                    </button>
+                    <button class="btn" id="export1-errors-btn" onclick="exportControl1Errors()" disabled>
+                        📋 Exporter cas KO (pour requette_3.csv)
+                    </button>
+                </div>
+                <div style="margin: 15px 0; padding-top: 10px; border-top: 1px solid #eee;">
+                    <button class="btn" id="control1-complete-btn" onclick="executeControl1Complete()" disabled>
+                        ✅ Étape 3: Contrôle avec justifications
+                    </button>
+                    <button class="btn" id="export1-btn" onclick="exportControl1()" disabled>
+                        📊 Exporter rapport complet
+                    </button>
+                </div>
+                <div id="requette3-info" class="status-message status-info" style="display: none; margin-top: 10px;">
+                    💡 Chargez requette_3.csv pour enrichir les justifications
+                </div>
+            </div>
+            
+            <div class="control-card">
+                <h3>🏗️ Contrôle 2: 8-SIG Dimension PBO</h3>
+                <p>
+                    Ce contrôle vérifie la cohérence entre le type d'infrastructure PBO et son nombre de logements :<br>
+                    • Récupération des PBO et comptage des logements FTTH associés<br>
+                    • Détermination du type d'infrastructure (SITE CLIENT, PB AERIEN, PB CHAMBRE, PB FACADE)<br>
+                    • Vérification des règles de capacité (≤12 pour C/SITE CLIENT, ≤8 pour A/F)
+                </p>
+                <div style="margin: 15px 0;">
+                    <button class="btn" id="control2-btn" onclick="executeControl2()">
+                        🔍 Étape 1: Identifier les non-conformités
+                    </button>
+                    <button class="btn" id="export2-errors-btn" onclick="exportControl2Errors()" disabled>
+                        📋 Exporter cas non conformes (pour requette_8.csv)
+                    </button>
+                </div>
+                <div style="margin: 15px 0; padding-top: 10px; border-top: 1px solid #eee;">
+                    <button class="btn" id="control2-complete-btn" onclick="executeControl2Complete()" disabled>
+                        ✅ Étape 3: Contrôle avec justifications
+                    </button>
+                    <button class="btn" id="export2-btn" onclick="exportControl2()" disabled>
+                        📊 Exporter rapport complet
+                    </button>
+                </div>
+                <div id="requette8-info" class="status-message status-info" style="display: none; margin-top: 10px;">
+                    💡 Chargez requette_8.csv pour enrichir les justifications
+                </div>
+            </div>
+        </div>
+
+        <div class="progress-bar" id="progress-bar" style="display: none;">
+            <div class="progress-fill" id="progress-fill"></div>
+        </div>
+
+        <div id="status-messages"></div>
+
+        <div class="results-section" id="results-section">
+            <h3>📊 Résultats du contrôle</h3>
+            <div id="results-content"></div>
+        </div>
+    </div>
+
+    <script>
+        let loadedFiles = {
+            adresse: null,
+            locale: null,
+            ptech: null,
+            ebp: null,
+            requette3: null,
+            requette8: null
+        };
+
+        let control1Results = null;
+        let control2Results = null;
+
+        // Gestion du chargement des fichiers
+        document.getElementById('adresse-file').addEventListener('change', (e) => loadFile(e, 'adresse'));
+        document.getElementById('locale-file').addEventListener('change', (e) => loadFile(e, 'locale'));
+        document.getElementById('ptech-file').addEventListener('change', (e) => loadFile(e, 'ptech'));
+        document.getElementById('ebp-file').addEventListener('change', (e) => loadFile(e, 'ebp'));
+        document.getElementById('requette3-file').addEventListener('change', (e) => loadFile(e, 'requette3'));
+        document.getElementById('requette8-file').addEventListener('change', (e) => loadFile(e, 'requette8'));
+
+        function loadFile(event, fileType) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const csvData = e.target.result;
+                    const parsed = Papa.parse(csvData, {
+                        header: true,
+                        skipEmptyLines: true,
+                        delimiter: ';'
+                    });
+
+                    loadedFiles[fileType] = parsed.data;
+                    updateFileStatus(fileType, 'loaded');
+                    showMessage(`✅ ${file.name} chargé avec succès (${parsed.data.length} lignes)`, 'success');
+                    
+                    checkControlsAvailability();
+                } catch (error) {
+                    showMessage(`❌ Erreur lors du chargement de ${file.name}: ${error.message}`, 'error');
+                    updateFileStatus(fileType, 'missing');
+                }
+            };
+            reader.readAsText(file, 'UTF-8');
+        }
+
+        function updateFileStatus(fileType, status) {
+            const statusElement = document.getElementById(`${fileType}-status`);
+            if (status === 'loaded') {
+                statusElement.textContent = 'Chargé ✅';
+                statusElement.className = 'file-status file-loaded';
+            } else {
+                statusElement.textContent = 'Non chargé';
+                statusElement.className = 'file-status file-missing';
+            }
+        }
+
+        function checkControlsAvailability() {
+            const control1Available = loadedFiles.adresse && loadedFiles.locale;
+            const control2Available = loadedFiles.ebp && loadedFiles.locale && loadedFiles.ptech;
+            
+            document.getElementById('control1-btn').disabled = !control1Available;
+            document.getElementById('control2-btn').disabled = !control2Available;
+            
+            const control1CompleteAvailable = control1Available && loadedFiles.requette3;
+            const control2CompleteAvailable = control2Available && loadedFiles.requette8;
+            
+            document.getElementById('control1-complete-btn').disabled = !control1CompleteAvailable;
+            document.getElementById('control2-complete-btn').disabled = !control2CompleteAvailable;
+            
+            document.getElementById('requette3-info').style.display = control1Available && !loadedFiles.requette3 ? 'block' : 'none';
+            document.getElementById('requette8-info').style.display = control2Available && !loadedFiles.requette8 ? 'block' : 'none';
+        }
+
+        function showMessage(message, type) {
+            const messagesDiv = document.getElementById('status-messages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `status-message status-${type}`;
+            messageDiv.textContent = message;
+            messagesDiv.appendChild(messageDiv);
+            
+            setTimeout(() => {
+                messageDiv.remove();
+            }, 5000);
+        }
+
+        function updateProgress(percent) {
+            document.getElementById('progress-bar').style.display = 'block';
+            document.getElementById('progress-fill').style.width = percent + '%';
+        }
+
+        function hideProgress() {
+            document.getElementById('progress-bar').style.display = 'none';
+        }
+
+        function findColumn(availableColumns, searchTerms) {
+            for (const term of searchTerms) {
+                const found = availableColumns.find(col => 
+                    col.toLowerCase().includes(term.toLowerCase())
+                );
+                if (found) return found;
+            }
+            return null;
+        }
+
+        async function executeControl1() {
+            if (!loadedFiles.adresse || !loadedFiles.locale) {
+                showMessage('❌ Veuillez charger les fichiers t_adresse_combined.csv et t_locale_combined.csv', 'error');
+                return;
+            }
+
+            try {
+                showMessage('🔄 Identification des cas en erreur - Contrôle 1...', 'info');
+                updateProgress(10);
+
+                const adresseData = loadedFiles.adresse.map(row => ({
+                    source_pm: row.source_pm || '',
+                    idimm: row.ad_batcode || '',
+                    ad_ietat: row.ad_ietat || '',
+                    ad_nbfotth: parseInt(row.ad_nbfotth) || 0
+                })).filter(row => row.idimm);
+
+                updateProgress(50);
+
+                const localeCountByIdimm = {};
+                loadedFiles.locale.forEach(row => {
+                    if (row.lc_typelog === 'FTTH' && row.lc_st_code) {
+                        const idimm = row.lc_st_code.slice(-15);
+                        if (idimm) {
+                            localeCountByIdimm[idimm] = (localeCountByIdimm[idimm] || 0) + 1;
+                        }
+                    }
+                });
+
+                updateProgress(80);
+
+                const results = adresseData.map(adresse => {
+                    const localeCount = localeCountByIdimm[adresse.idimm] || 0;
+                    const isCoherent = adresse.ad_nbfotth === localeCount;
+                    
+                    return {
+                        source_pm: adresse.source_pm,
+                        idimm: adresse.idimm,
+                        ad_ietat: adresse.ad_ietat,
+                        ad_nbfotth: adresse.ad_nbfotth,
+                        sum_lc_code_ftth: localeCount,
+                        verif: isCoherent ? 'OK' : 'KO'
+                    };
+                });
+
+                control1Results = results;
+                displayControl1Results(results, false);
+                document.getElementById('export1-errors-btn').disabled = false;
+
+                updateProgress(100);
+                setTimeout(hideProgress, 1000);
+
+                const koCount = results.filter(r => r.verif === 'KO').length;
+                showMessage(`✅ Identification terminée: ${results.length} adresses, ${koCount} cas en erreur identifiés`, 'success');
+
+            } catch (error) {
+                hideProgress();
+                showMessage(`❌ Erreur lors de l'identification: ${error.message}`, 'error');
+            }
+        }
+
+        async function executeControl1Complete() {
+            if (!loadedFiles.adresse || !loadedFiles.locale || !loadedFiles.requette3) {
+                showMessage('❌ Veuillez charger tous les fichiers requis incluant requette_3.csv', 'error');
+                return;
+            }
+
+            try {
+                showMessage('🔄 Contrôle complet avec justifications - Contrôle 1...', 'info');
+                updateProgress(10);
+                
+                const adresseData = loadedFiles.adresse.map(row => ({
+                    source_pm: row.source_pm || '',
+                    idimm: row.ad_batcode || '',
+                    ad_ietat: row.ad_ietat || '',
+                    ad_nbfotth: parseInt(row.ad_nbfotth) || 0
+                })).filter(row => row.idimm);
+
+                updateProgress(30);
+                
+                const localeCountByIdimm = {};
+                loadedFiles.locale.forEach(row => {
+                    if (row.lc_typelog === 'FTTH' && row.lc_st_code) {
+                        const idimm = row.lc_st_code.slice(-15);
+                        if (idimm) {
+                            localeCountByIdimm[idimm] = (localeCountByIdimm[idimm] || 0) + 1;
+                        }
+                    }
+                });
+
+                updateProgress(50);
+                showMessage('📝 Traitement des données de justification...', 'info');
+                
+                let requette3Data = {};
+                const availableColumns = Object.keys(loadedFiles.requette3[0] || {});
+                const columnMappings = {
+                    idimm: findColumn(availableColumns, ['ID Immeuble', 'id immeuble', 'immeuble']),
+                    ref_pto: findColumn(availableColumns, ['Référence PTO', 'PTO', 'ref pto', 'reference pto']),
+                    bp_etiquet: findColumn(availableColumns, ['Référence PBO', 'PBO', 'ref pbo', 'reference pbo', 'ROPVTL']),
+                    oc: findColumn(availableColumns, ['OC -', 'OC', 'oc ']),
+                    date: findColumn(availableColumns, ['Date début', 'date debut', 'date', 'debut'])
+                };
+                
+                showMessage(`🔍 Colonnes détectées: ID=${columnMappings.idimm}, PTO=${columnMappings.ref_pto}, PBO=${columnMappings.bp_etiquet}, OC=${columnMappings.oc}, Date=${columnMappings.date}`, 'info');
+                
+                loadedFiles.requette3.forEach(row => {
+                    const idimm = row[columnMappings.idimm];
+                    if (idimm) {
+                        if (!requette3Data[idimm]) {
+                            requette3Data[idimm] = { ref_pto: [], bp_etiquet: [], oc: [], date: [] };
+                        }
+                        
+                        if (row[columnMappings.ref_pto]) requette3Data[idimm].ref_pto.push(row[columnMappings.ref_pto]);
+                        if (row[columnMappings.bp_etiquet]) requette3Data[idimm].bp_etiquet.push(row[columnMappings.bp_etiquet]);
+                        if (row[columnMappings.oc]) requette3Data[idimm].oc.push(row[columnMappings.oc]);
+                        if (row[columnMappings.date]) requette3Data[idimm].date.push(row[columnMappings.date]);
+                    }
+                });
+
+                updateProgress(80);
+                
+                const results = adresseData.map(adresse => {
+                    const localeCount = localeCountByIdimm[adresse.idimm] || 0;
+                    const isCoherent = adresse.ad_nbfotth === localeCount;
+                    
+                    const result = {
+                        source_pm: adresse.source_pm,
+                        idimm: adresse.idimm,
+                        ad_ietat: adresse.ad_ietat,
+                        ad_nbfotth: adresse.ad_nbfotth,
+                        sum_lc_code_ftth: localeCount,
+                        verif: isCoherent ? 'OK' : 'KO',
+                        ref_pto: '',
+                        bp_etiquet: '',
+                        oc: '',
+                        date: ''
+                    };
+
+                    if (!isCoherent && requette3Data[adresse.idimm]) {
+                        const justif = requette3Data[adresse.idimm];
+                        result.ref_pto = justif.ref_pto.join(' | ');
+                        result.bp_etiquet = justif.bp_etiquet.join(' | ');
+                        result.oc = justif.oc.join(' | ');
+                        result.date = justif.date.join(' | ');
+                    }
+
+                    return result;
+                });
+
+                control1Results = results;
+                displayControl1Results(results, true);
+                document.getElementById('export1-btn').disabled = false;
+
+                updateProgress(100);
+                setTimeout(hideProgress, 1000);
+
+                const coherentCount = results.filter(r => r.verif === 'OK').length;
+                const incoherentCount = results.filter(r => r.verif === 'KO').length;
+                
+                showMessage(`✅ Contrôle 1 complet terminé: ${results.length} adresses, ${coherentCount} cohérentes, ${incoherentCount} incohérentes avec justifications`, 'success');
+                
+            } catch (error) {
+                hideProgress();
+                showMessage(`❌ Erreur lors du contrôle complet: ${error.message}`, 'error');
+            }
+        }
+
+        async function executeControl2() {
+            if (!loadedFiles.ebp || !loadedFiles.locale || !loadedFiles.ptech) {
+                showMessage('❌ Veuillez charger les fichiers t_ebp_combined.csv, t_locale_combined.csv et t_ptech_combined.csv', 'error');
+                return;
+            }
+
+            try {
+                showMessage('🔄 Identification des non-conformités - Contrôle 2...', 'info');
+                updateProgress(10);
+
+                const pboData = loadedFiles.ebp.filter(row => row.bp_typelog === 'PBO').map(row => ({
+                    source_pm: row.source_pm || '',
+                    block: row.bp_code || '',
+                    bp_etiquet: row.bp_etiquet || '',
+                    bp_pt_code: row.bp_pt_code || ''
+                }));
+
+                updateProgress(30);
+
+                const logementCountByPBO = {};
+                loadedFiles.locale.forEach(row => {
+                    if (row.lc_typelog === 'FTTH' && row.lc_bp_codf) {
+                        logementCountByPBO[row.lc_bp_codf] = (logementCountByPBO[row.lc_bp_codf] || 0) + 1;
+                    }
+                });
+
+                updateProgress(50);
+
+                const ptechData = {};
+                loadedFiles.ptech.forEach(row => {
+                    if (row.pt_code && row.pt_typephy) {
+                        ptechData[row.pt_code] = row.pt_typephy;
+                    }
+                });
+
+                updateProgress(70);
+
+                const results = pboData.map(pbo => {
+                    const nbLogements = logementCountByPBO[pbo.block] || 0;
+                    const ptTypephy = ptechData[pbo.bp_pt_code] || '';
+                    
+                    let infra = '';
+                    if (!pbo.bp_pt_code) {
+                        infra = 'SITE CLIENT';
+                    } else if (ptTypephy === 'A') {
+                        infra = 'PB AERIEN';
+                    } else if (ptTypephy === 'C') {
+                        infra = 'PB CHAMBRE';
+                    } else if (ptTypephy === 'F') {
+                        infra = 'PB FACADE';
+                    } else {
+                        infra = 'INCONNU';
+                    }
+
+                    let conforme = false;
+                    if (infra === 'PB CHAMBRE' || infra === 'SITE CLIENT') {
+                        conforme = nbLogements <= 12;
+                    } else if (infra === 'PB AERIEN' || infra === 'PB FACADE') {
+                        conforme = nbLogements <= 8;
+                    }
+
+                    return {
+                        ref_pm: pbo.source_pm,
+                        block: pbo.block,
+                        nb_logements: nbLogements,
+                        bp_etiquet: pbo.bp_etiquet,
+                        bp_pt_code: pbo.bp_pt_code,
+                        pt_typephy: ptTypephy,
+                        infra: infra,
+                        conformite: conforme ? 'CONFORME' : 'NON CONFORME'
+                    };
+                });
+
+                control2Results = results;
+                displayControl2Results(results, false);
+                document.getElementById('export2-errors-btn').disabled = false;
+
+                updateProgress(100);
+                setTimeout(hideProgress, 1000);
+
+                const nonConformeCount = results.filter(r => r.conformite === 'NON CONFORME').length;
+                showMessage(`✅ Identification terminée: ${results.length} PBO, ${nonConformeCount} non-conformités identifiées`, 'success');
+
+            } catch (error) {
+                hideProgress();
+                showMessage(`❌ Erreur lors de l'identification: ${error.message}`, 'error');
+            }
+        }
+
+        async function executeControl2Complete() {
+            if (!loadedFiles.ebp || !loadedFiles.locale || !loadedFiles.ptech || !loadedFiles.requette8) {
+                showMessage('❌ Veuillez charger tous les fichiers requis incluant requette_8.csv', 'error');
+                return;
+            }
+
+            try {
+                showMessage('🔄 Contrôle complet avec justifications - Contrôle 2...', 'info');
+                updateProgress(10);
+
+                const pboData = loadedFiles.ebp.filter(row => row.bp_typelog === 'PBO').map(row => ({
+                    source_pm: row.source_pm || '',
+                    block: row.bp_code || '',
+                    bp_etiquet: row.bp_etiquet || '',
+                    bp_pt_code: row.bp_pt_code || ''
+                }));
+
+                updateProgress(25);
+
+                const logementCountByPBO = {};
+                loadedFiles.locale.forEach(row => {
+                    if (row.lc_typelog === 'FTTH' && row.lc_bp_codf) {
+                        logementCountByPBO[row.lc_bp_codf] = (logementCountByPBO[row.lc_bp_codf] || 0) + 1;
+                    }
+                });
+
+                updateProgress(40);
+
+                const ptechData = {};
+                loadedFiles.ptech.forEach(row => {
+                    if (row.pt_code && row.pt_typephy) {
+                        ptechData[row.pt_code] = row.pt_typephy;
+                    }
+                });
+
+                updateProgress(55);
+                showMessage('📝 Traitement des données de justification requette_8...', 'info');
+                
+                let requette8Data = {};
+                const availableColumns = Object.keys(loadedFiles.requette8[0] || {});
+                console.log('🔍 Colonnes disponibles dans requette_8:', availableColumns);
+                
+                const columnMappings = {
+                    pbo: findColumn(availableColumns, ['Référence PBO', 'PBO', 'ROPVTL']),
+                    ref_pto: findColumn(availableColumns, ['Référence PTO', 'PTO', 'ref pto']),
+                    idimm: findColumn(availableColumns, ['ID Immeuble', 'id immeuble', 'immeuble']),
+                    oc: findColumn(availableColumns, ['OC -', 'OC', 'oc ']),
+                    date: findColumn(availableColumns, ['Date début', 'date debut', 'date'])
+                };
+
+                console.log('🗂️ Mapping des colonnes requette_8:', columnMappings);
+                showMessage(`🔍 Colonnes détectées: PBO=${columnMappings.pbo}, PTO=${columnMappings.ref_pto}, ID=${columnMappings.idimm}, OC=${columnMappings.oc}`, 'info');
+
+                // Créer aussi un mapping par bp_etiquet au cas où
+                let requette8DataByEtiquet = {};
+                
+                loadedFiles.requette8.forEach((row, index) => {
+                    const pboCode = row[columnMappings.pbo];
+                    if (pboCode) {
+                        // Stocker par le code PBO original
+                        if (!requette8Data[pboCode]) {
+                            requette8Data[pboCode] = { ref_pto: [], idimm: [], oc: [], date: [] };
+                        }
+                        
+                        // Stocker aussi par bp_etiquet si c'est ce qui est utilisé
+                        if (!requette8DataByEtiquet[pboCode]) {
+                            requette8DataByEtiquet[pboCode] = { ref_pto: [], idimm: [], oc: [], date: [] };
+                        }
+                        
+                        if (row[columnMappings.ref_pto]) {
+                            requette8Data[pboCode].ref_pto.push(row[columnMappings.ref_pto]);
+                            requette8DataByEtiquet[pboCode].ref_pto.push(row[columnMappings.ref_pto]);
+                        }
+                        if (row[columnMappings.idimm]) {
+                            requette8Data[pboCode].idimm.push(row[columnMappings.idimm]);
+                            requette8DataByEtiquet[pboCode].idimm.push(row[columnMappings.idimm]);
+                        }
+                        if (row[columnMappings.oc]) {
+                            requette8Data[pboCode].oc.push(row[columnMappings.oc]);
+                            requette8DataByEtiquet[pboCode].oc.push(row[columnMappings.oc]);
+                        }
+                        if (row[columnMappings.date]) {
+                            requette8Data[pboCode].date.push(row[columnMappings.date]);
+                            requette8DataByEtiquet[pboCode].date.push(row[columnMappings.date]);
+                        }
+                        
+                        // Debug: afficher les premières lignes traitées
+                        if (index < 3) {
+                            console.log(`📋 Ligne ${index + 1} requette_8:`, {
+                                pboCode: pboCode,
+                                ref_pto: row[columnMappings.ref_pto],
+                                idimm: row[columnMappings.idimm],
+                                oc: row[columnMappings.oc]
+                            });
+                        }
+                    }
+                });
+                
+                console.log('📊 Données de justification requette_8 traitées:', Object.keys(requette8Data).length, 'PBO trouvés');
+                console.log('📋 Premier PBO dans requette_8:', Object.keys(requette8Data)[0], requette8Data[Object.keys(requette8Data)[0]]);
+
+                updateProgress(75);
+
+                // Debug: comparer les codes PBO
+                console.log('🔍 Comparaison des codes PBO:');
+                const ebpCodes = pboData.slice(0, 5).map(p => p.block);
+                const requetteCodes = Object.keys(requette8Data).slice(0, 5);
+                console.log('📋 Premiers codes PBO de t_ebp:', ebpCodes);
+                console.log('📋 Premiers codes PBO de requette_8:', requetteCodes);
+                
+                // Afficher plus de détails sur le format
+                if (ebpCodes.length > 0 && requetteCodes.length > 0) {
+                    console.log('📏 Longueur code t_ebp:', ebpCodes[0].length, 'Exemple:', ebpCodes[0]);
+                    console.log('📏 Longueur code requette_8:', requetteCodes[0].length, 'Exemple:', requetteCodes[0]);
+                }
+                
+                // Chercher des correspondances
+                const pboCodesInEbp = new Set(pboData.map(p => p.block));
+                const pboEtiquetsInEbp = new Set(pboData.map(p => p.bp_etiquet));
+                const pboCodesInRequette = new Set(Object.keys(requette8Data));
+                
+                // Afficher des exemples de bp_etiquet
+                console.log('🏷️ Exemples de bp_etiquet dans t_ebp:', [...pboEtiquetsInEbp].slice(0, 5));
+                
+                const matchingCodes = [...pboCodesInEbp].filter(code => pboCodesInRequette.has(code));
+                const matchingEtiquets = [...pboEtiquetsInEbp].filter(code => pboCodesInRequette.has(code));
+                
+                console.log(`🎯 Correspondances trouvées par block: ${matchingCodes.length} sur ${pboCodesInEbp.size} PBO`);
+                console.log(`🎯 Correspondances trouvées par bp_etiquet: ${matchingEtiquets.length} sur ${pboEtiquetsInEbp.size} PBO`);
+                
+                if (matchingCodes.length > 0) {
+                    console.log('✅ Exemples de codes (block) qui correspondent:', matchingCodes.slice(0, 3));
+                }
+                if (matchingEtiquets.length > 0) {
+                    console.log('✅ Exemples de codes (bp_etiquet) qui correspondent:', matchingEtiquets.slice(0, 3));
+                }
+
+                showMessage('📊 Génération du rapport avec justifications...', 'info');
+                
+                const results = pboData.map((pbo, index) => {
+                    const nbLogements = logementCountByPBO[pbo.block] || 0;
+                    const ptTypephy = ptechData[pbo.bp_pt_code] || '';
+                    
+                    let infra = '';
+                    if (!pbo.bp_pt_code) {
+                        infra = 'SITE CLIENT';
+                    } else if (ptTypephy === 'A') {
+                        infra = 'PB AERIEN';
+                    } else if (ptTypephy === 'C') {
+                        infra = 'PB CHAMBRE';
+                    } else if (ptTypephy === 'F') {
+                        infra = 'PB FACADE';
+                    } else {
+                        infra = 'INCONNU';
+                    }
+
+                    let conforme = false;
+                    if (infra === 'PB CHAMBRE' || infra === 'SITE CLIENT') {
+                        conforme = nbLogements <= 12;
+                    } else if (infra === 'PB AERIEN' || infra === 'PB FACADE') {
+                        conforme = nbLogements <= 8;
+                    }
+
+                    const result = {
+                        ref_pm: pbo.source_pm,
+                        block: pbo.block,
+                        nb_logements: nbLogements,
+                        bp_etiquet: pbo.bp_etiquet,
+                        bp_pt_code: pbo.bp_pt_code,
+                        pt_typephy: ptTypephy,
+                        infra: infra,
+                        conformite: conforme ? 'CONFORME' : 'NON CONFORME',
+                        sum_prise_cmd: '',
+                        idimm_cmd: '',
+                        ref_pto_cmd: '',
+                        oc_cmd: ''
+                    };
+
+                    // Debug: chercher les justifications - essayer plusieurs approches
+                    let justifFound = requette8Data[pbo.block] || requette8Data[pbo.bp_etiquet] || requette8DataByEtiquet[pbo.bp_etiquet];
+                    
+                    if (!conforme) {
+                        if (index < 5) { // Debug pour les 5 premiers non conformes
+                            console.log(`🔍 PBO non conforme - recherche justifications:`, {
+                                block: pbo.block,
+                                bp_etiquet: pbo.bp_etiquet,
+                                foundByBlock: !!requette8Data[pbo.block],
+                                foundByEtiquet: !!requette8Data[pbo.bp_etiquet],
+                                foundByEtiquetAlt: !!requette8DataByEtiquet[pbo.bp_etiquet],
+                                justifData: justifFound
+                            });
+                        }
+                        
+                        if (justifFound) {
+                            const justif = justifFound;
+                            result.sum_prise_cmd = justif.ref_pto.length.toString();
+                            result.idimm_cmd = justif.idimm.join(' | ');
+                            result.ref_pto_cmd = justif.ref_pto.join(' | ');
+                            result.oc_cmd = justif.oc.join(' | ');
+                            
+                            if (index < 3) { // Debug pour les 3 premiers avec justifications
+                                console.log(`✅ Justifications ajoutées pour ${pbo.block}:`, {
+                                    sum_prise_cmd: result.sum_prise_cmd,
+                                    idimm_cmd: result.idimm_cmd,
+                                    ref_pto_cmd: result.ref_pto_cmd,
+                                    oc_cmd: result.oc_cmd
+                                });
+                            }
+                        } else {
+                            if (index < 3) {
+                                console.log(`❌ Aucune justification trouvée pour PBO ${pbo.block}`);
+                            }
+                        }
+                    }
+
+                    return result;
+                });
+
+                control2Results = results;
+                
+                // Debug: vérifier les résultats avec justifications
+                const resultsWithJustif = results.filter(r => r.sum_prise_cmd || r.idimm_cmd || r.ref_pto_cmd || r.oc_cmd);
+                console.log(`📊 Résultats avec justifications: ${resultsWithJustif.length} sur ${results.filter(r => r.conformite === 'NON CONFORME').length} non conformes`);
+                if (resultsWithJustif.length > 0) {
+                    console.log('Exemple de résultat avec justifications:', resultsWithJustif[0]);
+                }
+                
+                displayControl2Results(results, true);
+                document.getElementById('export2-btn').disabled = false;
+
+                updateProgress(100);
+                setTimeout(hideProgress, 1000);
+
+                const conformeCount = results.filter(r => r.conformite === 'CONFORME').length;
+                const nonConformeCount = results.filter(r => r.conformite === 'NON CONFORME').length;
+                
+                showMessage(`✅ Contrôle 2 complet terminé: ${results.length} PBO, ${conformeCount} conformes, ${nonConformeCount} non conformes avec justifications`, 'success');
+
+            } catch (error) {
+                hideProgress();
+                showMessage(`❌ Erreur lors du contrôle complet: ${error.message}`, 'error');
+                console.error('Erreur détaillée:', error);
+            }
+        }
+
+        function displayControl1Results(results, withJustifications = false) {
+            const resultsSection = document.getElementById('results-section');
+            const resultsContent = document.getElementById('results-content');
+
+            const coherentCount = results.filter(r => r.verif === 'OK').length;
+            const incoherentCount = results.filter(r => r.verif === 'KO').length;
+
+            let html = `
+                <div class="status-message status-info">
+                    📊 Contrôle 1 - Résumé: ${results.length} adresses analysées | 
+                    ✅ ${coherentCount} cohérentes | 
+                    ❌ ${incoherentCount} incohérentes
+                    ${withJustifications ? ' (avec justifications)' : ' (identification seulement)'}
+                </div>
+                
+                <table class="results-table">
+                    <thead>
+                        <tr>
+                            <th>Source PM</th>
+                            <th>ID Immeuble</th>
+                            <th>État Adresse</th>
+                            <th>Nb FTTH Déclaré</th>
+                            <th>Nb FTTH Compté</th>
+                            <th>Vérification</th>
+                            ${withJustifications ? `
+                            <th>REF PTO</th>
+                            <th>BP Étiquette</th>
+                            <th>OC</th>
+                            <th>Date</th>
+                            ` : ''}
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+
+            results.forEach(row => {
+                const rowClass = row.verif === 'KO' ? 'highlight-error' : 'highlight-success';
+                html += `
+                    <tr class="${rowClass}">
+                        <td>${row.source_pm}</td>
+                        <td>${row.idimm}</td>
+                        <td>${row.ad_ietat}</td>
+                        <td>${row.ad_nbfotth}</td>
+                        <td>${row.sum_lc_code_ftth}</td>
+                        <td><strong>${row.verif}</strong></td>
+                        ${withJustifications ? `
+                        <td>${row.ref_pto || ''}</td>
+                        <td>${row.bp_etiquet || ''}</td>
+                        <td>${row.oc || ''}</td>
+                        <td>${row.date || ''}</td>
+                        ` : ''}
+                    </tr>
+                `;
+            });
+
+            html += `</tbody></table>`;
+
+            resultsContent.innerHTML = html;
+            resultsSection.style.display = 'block';
+        }
+
+        function displayControl2Results(results, withJustifications = false) {
+            const resultsSection = document.getElementById('results-section');
+            const resultsContent = document.getElementById('results-content');
+            
+            // Debug: vérifier si withJustifications est true et si les données existent
+            if (withJustifications) {
+                console.log('🔍 displayControl2Results appelé avec justifications = true');
+                const firstNonConforme = results.find(r => r.conformite === 'NON CONFORME');
+                if (firstNonConforme) {
+                    console.log('Premier cas non conforme:', firstNonConforme);
+                }
+            }
+
+            const conformeCount = results.filter(r => r.conformite === 'CONFORME').length;
+            const nonConformeCount = results.filter(r => r.conformite === 'NON CONFORME').length;
+
+            let html = `
+                <div class="status-message status-info">
+                    📊 Contrôle 2 - Résumé: ${results.length} PBO analysés | 
+                    ✅ ${conformeCount} conformes | 
+                    ❌ ${nonConformeCount} non conformes
+                    ${withJustifications ? ' (avec justifications)' : ' (identification seulement)'}
+                </div>
+                
+                <table class="results-table">
+                    <thead>
+                        <tr>
+                            <th>REF PM</th>
+                            <th>Block</th>
+                            <th>Nb Logements</th>
+                            <th>BP Étiquette</th>
+                            <th>BP PT Code</th>
+                            <th>PT Typephy</th>
+                            <th>Infra</th>
+                            <th>Conformité</th>
+                            ${withJustifications ? `
+                            <th>Sum Prise CMD</th>
+                            <th>Idimm CMD</th>
+                            <th>REF PTO CMD</th>
+                            <th>OC CMD</th>
+                            ` : ''}
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+
+            results.forEach(row => {
+                const rowClass = row.conformite === 'NON CONFORME' ? 'highlight-error' : 'highlight-success';
+                html += `
+                    <tr class="${rowClass}">
+                        <td>${row.ref_pm}</td>
+                        <td>${row.block}</td>
+                        <td>${row.nb_logements}</td>
+                        <td>${row.bp_etiquet}</td>
+                        <td>${row.bp_pt_code}</td>
+                        <td>${row.pt_typephy}</td>
+                        <td>${row.infra}</td>
+                        <td><strong>${row.conformite}</strong></td>
+                        ${withJustifications ? `
+                        <td>${row.sum_prise_cmd || ''}</td>
+                        <td>${row.idimm_cmd || ''}</td>
+                        <td>${row.ref_pto_cmd || ''}</td>
+                        <td>${row.oc_cmd || ''}</td>
+                        ` : ''}
+                    </tr>
+                `;
+            });
+
+            html += `</tbody></table>`;
+
+            resultsContent.innerHTML = html;
+            resultsSection.style.display = 'block';
+        }
+
+        function exportControl1Errors() {
+            if (!control1Results) {
+                showMessage('❌ Aucun résultat à exporter', 'error');
+                return;
+            }
+
+            try {
+                const errorsOnly = control1Results.filter(row => row.verif === 'KO');
+                
+                if (errorsOnly.length === 0) {
+                    showMessage('✅ Aucun cas en erreur trouvé !', 'success');
+                    return;
+                }
+
+                const excelData = errorsOnly.map(row => ({
+                    'Source PM': row.source_pm,
+                    'ID Immeuble': row.idimm,
+                    'État Adresse': row.ad_ietat,
+                    'Nb FTTH Déclaré': row.ad_nbfotth,
+                    'Nb FTTH Compté': row.sum_lc_code_ftth,
+                    'Écart': row.ad_nbfotth - row.sum_lc_code_ftth
+                }));
+
+                const wb = XLSX.utils.book_new();
+                const ws = XLSX.utils.json_to_sheet(excelData);
+                ws['!cols'] = [
+                    { wch: 50 }, { wch: 20 }, { wch: 15 }, 
+                    { wch: 18 }, { wch: 18 }, { wch: 15 }
+                ];
+
+                XLSX.utils.book_append_sheet(wb, ws, 'Cas en erreur');
+                const fileName = `Cas_erreur_Control1_${new Date().toISOString().slice(0, 10)}.xlsx`;
+                XLSX.writeFile(wb, fileName);
+
+                showMessage(`📋 Export des cas en erreur créé: ${fileName} (${errorsOnly.length} cas)`, 'success');
+
+            } catch (error) {
+                showMessage(`❌ Erreur lors de l'export: ${error.message}`, 'error');
+            }
+        }
+
+        function exportControl2Errors() {
+            if (!control2Results) {
+                showMessage('❌ Aucun résultat à exporter', 'error');
+                return;
+            }
+
+            try {
+                const errorsOnly = control2Results.filter(row => row.conformite === 'NON CONFORME');
+                
+                if (errorsOnly.length === 0) {
+                    showMessage('✅ Aucun cas non conforme trouvé !', 'success');
+                    return;
+                }
+
+                const excelData = errorsOnly.map(row => ({
+                    'Block (PBO)': row.block,
+                    'REF PM': row.ref_pm,
+                    'Nb Logements': row.nb_logements,
+                    'BP Étiquette': row.bp_etiquet,
+                    'BP PT Code': row.bp_pt_code,
+                    'Type Infra': row.infra,
+                    'Limite autorisée': (row.infra === 'PB CHAMBRE' || row.infra === 'SITE CLIENT') ? 12 : 8,
+                    'Dépassement': row.nb_logements - ((row.infra === 'PB CHAMBRE' || row.infra === 'SITE CLIENT') ? 12 : 8)
+                }));
+
+                const wb = XLSX.utils.book_new();
+                const ws = XLSX.utils.json_to_sheet(excelData);
+                ws['!cols'] = [
+                    { wch: 20 }, { wch: 50 }, { wch: 15 }, { wch: 25 },
+                    { wch: 20 }, { wch: 15 }, { wch: 18 }, { wch: 15 }
+                ];
+
+                XLSX.utils.book_append_sheet(wb, ws, 'PBO non conformes');
+                const fileName = `PBO_non_conformes_Control2_${new Date().toISOString().slice(0, 10)}.xlsx`;
+                XLSX.writeFile(wb, fileName);
+
+                showMessage(`📋 Export des PBO non conformes créé: ${fileName} (${errorsOnly.length} cas)`, 'success');
+
+            } catch (error) {
+                showMessage(`❌ Erreur lors de l'export: ${error.message}`, 'error');
+            }
+        }
+
+        function exportControl1() {
+            if (!control1Results) {
+                showMessage('❌ Aucun résultat à exporter', 'error');
+                return;
+            }
+
+            try {
+                const hasJustifications = control1Results.some(r => r.ref_pto || r.bp_etiquet || r.oc || r.date);
+                
+                const excelData = control1Results.map(row => {
+                    const baseData = {
+                        'Source PM': row.source_pm,
+                        'ID Immeuble': row.idimm,
+                        'État Adresse': row.ad_ietat,
+                        'Nb FTTH Déclaré': row.ad_nbfotth,
+                        'Nb FTTH Compté': row.sum_lc_code_ftth,
+                        'Vérification': row.verif
+                    };
+
+                    if (hasJustifications) {
+                        baseData['REF PTO'] = row.ref_pto || '';
+                        baseData['BP Étiquette'] = row.bp_etiquet || '';
+                        baseData['OC'] = row.oc || '';
+                        baseData['Date'] = row.date || '';
+                    }
+
+                    return baseData;
+                });
+
+                const wb = XLSX.utils.book_new();
+                const ws = XLSX.utils.json_to_sheet(excelData);
+
+                const colWidths = hasJustifications ? [
+                    { wch: 50 }, { wch: 20 }, { wch: 15 }, { wch: 18 }, { wch: 18 }, { wch: 15 },
+                    { wch: 30 }, { wch: 30 }, { wch: 20 }, { wch: 25 }
+                ] : [
+                    { wch: 50 }, { wch: 20 }, { wch: 15 }, { wch: 18 }, { wch: 18 }, { wch: 15 }
+                ];
+                ws['!cols'] = colWidths;
+
+                XLSX.utils.book_append_sheet(wb, ws, '3-SIG NB Logements GRACE');
+
+                const suffix = hasJustifications ? '_complet' : '_identification';
+                const fileName = `3-SIG_NB_Logements_GRACE${suffix}_${new Date().toISOString().slice(0, 10)}.xlsx`;
+                XLSX.writeFile(wb, fileName);
+
+                showMessage(`📊 Export Excel créé: ${fileName}`, 'success');
+
+            } catch (error) {
+                showMessage(`❌ Erreur lors de l'export: ${error.message}`, 'error');
+            }
+        }
+
+        function exportControl2() {
+            if (!control2Results) {
+                showMessage('❌ Aucun résultat à exporter', 'error');
+                return;
+            }
+
+            try {
+                const hasJustifications = control2Results.some(r => r.sum_prise_cmd || r.idimm_cmd || r.ref_pto_cmd || r.oc_cmd);
+
+                const excelData = control2Results.map(row => {
+                    const baseData = {
+                        'REF PM': row.ref_pm,
+                        'Block': row.block,
+                        'Nombre de logements': row.nb_logements,
+                        'BP Étiquette': row.bp_etiquet,
+                        'BP PT Code': row.bp_pt_code,
+                        'PT Typephy': row.pt_typephy,
+                        'Infra': row.infra,
+                        'Conformité': row.conformite
+                    };
+
+                    if (hasJustifications) {
+                        baseData['Sum Prise CMD'] = row.sum_prise_cmd || '';
+                        baseData['Idimm CMD'] = row.idimm_cmd || '';
+                        baseData['REF PTO CMD'] = row.ref_pto_cmd || '';
+                        baseData['OC CMD'] = row.oc_cmd || '';
+                    }
+
+                    return baseData;
+                });
+
+                const wb = XLSX.utils.book_new();
+                const ws = XLSX.utils.json_to_sheet(excelData);
+
+                const colWidths = hasJustifications ? [
+                    { wch: 50 }, { wch: 20 }, { wch: 18 }, { wch: 25 }, { wch: 20 }, { wch: 15 }, { wch: 15 }, { wch: 15 },
+                    { wch: 15 }, { wch: 30 }, { wch: 30 }, { wch: 25 }
+                ] : [
+                    { wch: 50 }, { wch: 20 }, { wch: 18 }, { wch: 25 }, { wch: 20 }, { wch: 15 }, { wch: 15 }, { wch: 15 }
+                ];
+                ws['!cols'] = colWidths;
+
+                XLSX.utils.book_append_sheet(wb, ws, '8-SIG Dimension PBO');
+
+                const suffix = hasJustifications ? '_complet' : '_identification';
+                const fileName = `8-SIG_Dimension_PBO${suffix}_${new Date().toISOString().slice(0, 10)}.xlsx`;
+                XLSX.writeFile(wb, fileName);
+
+                showMessage(`📊 Export Excel créé: ${fileName}`, 'success');
+
+            } catch (error) {
+                showMessage(`❌ Erreur lors de l'export: ${error.message}`, 'error');
+            }
+        }
+
+        // Initialisation
+        checkControlsAvailability();
+    </script>
+</body>
+</html>
