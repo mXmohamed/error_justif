@@ -3,9 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Contrôle des Livrables CSV</title>
+    <title>Contrôle des Livrables CSV et Concaténation</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -39,6 +40,38 @@
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
+        }
+
+        .tabs {
+            display: flex;
+            margin-bottom: 30px;
+            background: #f0f0f0;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .tab {
+            flex: 1;
+            padding: 15px;
+            text-align: center;
+            cursor: pointer;
+            background: #f0f0f0;
+            transition: all 0.3s ease;
+            font-weight: 600;
+            color: #666;
+        }
+
+        .tab.active {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
         }
 
         .upload-section {
@@ -242,121 +275,246 @@
             background: #f8d7da;
             color: #721c24;
         }
+
+        /* Styles pour la section concaténation */
+        .zip-drop-area {
+            border: 3px dashed #667eea;
+            border-radius: 10px;
+            padding: 40px;
+            text-align: center;
+            margin: 20px 0;
+            transition: all 0.3s ease;
+            background: #f8f9ff;
+        }
+
+        .zip-drop-area.drag-over {
+            background: #e8ebff;
+            border-color: #764ba2;
+            transform: scale(1.02);
+        }
+
+        .zip-files-list {
+            margin: 20px 0;
+            max-height: 200px;
+            overflow-y: auto;
+            background: white;
+            border-radius: 8px;
+            padding: 15px;
+        }
+
+        .zip-file-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px;
+            margin: 5px 0;
+            background: #f0f0f0;
+            border-radius: 5px;
+        }
+
+        .concat-results {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .concat-result-card {
+            background: #f8f9ff;
+            border: 1px solid #667eea;
+            border-radius: 8px;
+            padding: 15px;
+            text-align: center;
+        }
+
+        .concat-result-card h4 {
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+
+        .download-btn {
+            background: linear-gradient(45deg, #28a745, #20c997);
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            margin-top: 10px;
+            transition: all 0.3s ease;
+        }
+
+        .download-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 3px 10px rgba(40, 167, 69, 0.3);
+        }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>🔍 Contrôle des Livrables CSV</h1>
+        <h1>🔍 Contrôle des Livrables et Concaténation CSV</h1>
         
-        <div class="upload-section">
-            <h2>📁 Chargement des fichiers</h2>
-            <div class="file-input-group">
-                <div class="file-input-item">
-                    <label for="adresse-file">t_adresse_combined.csv</label>
-                    <input type="file" id="adresse-file" accept=".csv" />
-                    <span id="adresse-status" class="file-status file-missing">Non chargé</span>
+        <div class="tabs">
+            <div class="tab active" onclick="switchTab('controls')">📊 Contrôles CSV</div>
+            <div class="tab" onclick="switchTab('concatenation')">🔗 Concaténation ZIP</div>
+        </div>
+
+        <!-- Section Contrôles (code existant) -->
+        <div id="controls-tab" class="tab-content active">
+            <div class="upload-section">
+                <h2>📁 Chargement des fichiers</h2>
+                <div class="file-input-group">
+                    <div class="file-input-item">
+                        <label for="adresse-file">t_adresse_combined.csv</label>
+                        <input type="file" id="adresse-file" accept=".csv" />
+                        <span id="adresse-status" class="file-status file-missing">Non chargé</span>
+                    </div>
+                    <div class="file-input-item">
+                        <label for="locale-file">t_locale_combined.csv</label>
+                        <input type="file" id="locale-file" accept=".csv" />
+                        <span id="locale-status" class="file-status file-missing">Non chargé</span>
+                    </div>
+                    <div class="file-input-item">
+                        <label for="ptech-file">t_ptech_combined.csv</label>
+                        <input type="file" id="ptech-file" accept=".csv" />
+                        <span id="ptech-status" class="file-status file-missing">Non chargé</span>
+                    </div>
+                    <div class="file-input-item">
+                        <label for="ebp-file">t_ebp_combined.csv</label>
+                        <input type="file" id="ebp-file" accept=".csv" />
+                        <span id="ebp-status" class="file-status file-missing">Non chargé</span>
+                    </div>
+                    <div class="file-input-item">
+                        <label for="requette3-file">requette_3.csv</label>
+                        <input type="file" id="requette3-file" accept=".csv" />
+                        <span id="requette3-status" class="file-status file-missing">Non chargé</span>
+                    </div>
+                    <div class="file-input-item">
+                        <label for="requette8-file">requette_8.csv</label>
+                        <input type="file" id="requette8-file" accept=".csv" />
+                        <span id="requette8-status" class="file-status file-missing">Non chargé</span>
+                    </div>
                 </div>
-                <div class="file-input-item">
-                    <label for="locale-file">t_locale_combined.csv</label>
-                    <input type="file" id="locale-file" accept=".csv" />
-                    <span id="locale-status" class="file-status file-missing">Non chargé</span>
+            </div>
+
+            <div class="control-section">
+                <div class="control-card">
+                    <h3>🏠 Contrôle 1: 3-SIG NB Logements GRACE</h3>
+                    <p>
+                        Ce contrôle compare le nombre de logements entre t_adresse et t_locale :<br>
+                        • Récupération du nombre de logements FTTH déclaré (ad_nbfotth)<br>
+                        • Comptage des locaux FTTH par adresse dans t_locale<br>
+                        • Identification des incohérences
+                    </p>
+                    <div style="margin: 15px 0;">
+                        <button class="btn" id="control1-btn" onclick="executeControl1()">
+                            🔍 Étape 1: Identifier les cas en erreur
+                        </button>
+                        <button class="btn" id="export1-errors-btn" onclick="exportControl1Errors()" disabled>
+                            📋 Exporter cas KO (pour requette_3.csv)
+                        </button>
+                    </div>
+                    <div style="margin: 15px 0; padding-top: 10px; border-top: 1px solid #eee;">
+                        <button class="btn" id="control1-complete-btn" onclick="executeControl1Complete()" disabled>
+                            ✅ Étape 3: Contrôle avec justifications
+                        </button>
+                        <button class="btn" id="export1-btn" onclick="exportControl1()" disabled>
+                            📊 Exporter rapport complet
+                        </button>
+                    </div>
+                    <div id="requette3-info" class="status-message status-info" style="display: none; margin-top: 10px;">
+                        💡 Chargez requette_3.csv pour enrichir les justifications
+                    </div>
                 </div>
-                <div class="file-input-item">
-                    <label for="ptech-file">t_ptech_combined.csv</label>
-                    <input type="file" id="ptech-file" accept=".csv" />
-                    <span id="ptech-status" class="file-status file-missing">Non chargé</span>
+                
+                <div class="control-card">
+                    <h3>🏗️ Contrôle 2: 8-SIG Dimension PBO</h3>
+                    <p>
+                        Ce contrôle vérifie la cohérence entre le type d'infrastructure PBO et son nombre de logements :<br>
+                        • Récupération des PBO et comptage des logements FTTH associés<br>
+                        • Détermination du type d'infrastructure (SITE CLIENT, PB AERIEN, PB CHAMBRE, PB FACADE)<br>
+                        • Vérification des règles de capacité (≤12 pour C/SITE CLIENT, ≤8 pour A/F)
+                    </p>
+                    <div style="margin: 15px 0;">
+                        <button class="btn" id="control2-btn" onclick="executeControl2()">
+                            🔍 Étape 1: Identifier les non-conformités
+                        </button>
+                        <button class="btn" id="export2-errors-btn" onclick="exportControl2Errors()" disabled>
+                            📋 Exporter cas non conformes (pour requette_8.csv)
+                        </button>
+                    </div>
+                    <div style="margin: 15px 0; padding-top: 10px; border-top: 1px solid #eee;">
+                        <button class="btn" id="control2-complete-btn" onclick="executeControl2Complete()" disabled>
+                            ✅ Étape 3: Contrôle avec justifications
+                        </button>
+                        <button class="btn" id="export2-btn" onclick="exportControl2()" disabled>
+                            📊 Exporter rapport complet
+                        </button>
+                    </div>
+                    <div id="requette8-info" class="status-message status-info" style="display: none; margin-top: 10px;">
+                        💡 Chargez requette_8.csv pour enrichir les justifications
+                    </div>
                 </div>
-                <div class="file-input-item">
-                    <label for="ebp-file">t_ebp_combined.csv</label>
-                    <input type="file" id="ebp-file" accept=".csv" />
-                    <span id="ebp-status" class="file-status file-missing">Non chargé</span>
-                </div>
-                <div class="file-input-item">
-                    <label for="requette3-file">requette_3.csv</label>
-                    <input type="file" id="requette3-file" accept=".csv" />
-                    <span id="requette3-status" class="file-status file-missing">Non chargé</span>
-                </div>
-                <div class="file-input-item">
-                    <label for="requette8-file">requette_8.csv</label>
-                    <input type="file" id="requette8-file" accept=".csv" />
-                    <span id="requette8-status" class="file-status file-missing">Non chargé</span>
-                </div>
+            </div>
+
+            <div class="progress-bar" id="progress-bar" style="display: none;">
+                <div class="progress-fill" id="progress-fill"></div>
+            </div>
+
+            <div id="status-messages"></div>
+
+            <div class="results-section" id="results-section">
+                <h3>📊 Résultats du contrôle</h3>
+                <div id="results-content"></div>
             </div>
         </div>
 
-        <div class="control-section">
-            <div class="control-card">
-                <h3>🏠 Contrôle 1: 3-SIG NB Logements GRACE</h3>
-                <p>
-                    Ce contrôle compare le nombre de logements entre t_adresse et t_locale :<br>
-                    • Récupération du nombre de logements FTTH déclaré (ad_nbfotth)<br>
-                    • Comptage des locaux FTTH par adresse dans t_locale<br>
-                    • Identification des incohérences
-                </p>
-                <div style="margin: 15px 0;">
-                    <button class="btn" id="control1-btn" onclick="executeControl1()">
-                        🔍 Étape 1: Identifier les cas en erreur
-                    </button>
-                    <button class="btn" id="export1-errors-btn" onclick="exportControl1Errors()" disabled>
-                        📋 Exporter cas KO (pour requette_3.csv)
-                    </button>
-                </div>
-                <div style="margin: 15px 0; padding-top: 10px; border-top: 1px solid #eee;">
-                    <button class="btn" id="control1-complete-btn" onclick="executeControl1Complete()" disabled>
-                        ✅ Étape 3: Contrôle avec justifications
-                    </button>
-                    <button class="btn" id="export1-btn" onclick="exportControl1()" disabled>
-                        📊 Exporter rapport complet
+        <!-- Section Concaténation -->
+        <div id="concatenation-tab" class="tab-content">
+            <div class="upload-section">
+                <h2>🔗 Concaténation de fichiers ZIP</h2>
+                <p>Cette fonctionnalité permet de concaténer automatiquement les fichiers CSV et DBF contenus dans plusieurs fichiers ZIP.</p>
+                
+                <div class="zip-drop-area" id="zip-drop-area">
+                    <p style="font-size: 1.2rem; color: #667eea; margin-bottom: 20px;">
+                        📂 Glissez-déposez vos fichiers ZIP ici
+                    </p>
+                    <p style="color: #999;">ou</p>
+                    <input type="file" id="zip-files-input" multiple accept=".zip" style="display: none;">
+                    <button class="btn" onclick="document.getElementById('zip-files-input').click()">
+                        Sélectionner des fichiers ZIP
                     </button>
                 </div>
-                <div id="requette3-info" class="status-message status-info" style="display: none; margin-top: 10px;">
-                    💡 Chargez requette_3.csv pour enrichir les justifications
+
+                <div class="zip-files-list" id="zip-files-list" style="display: none;">
+                    <h3>📁 Fichiers ZIP sélectionnés:</h3>
+                    <div id="zip-files-items"></div>
+                </div>
+
+                <div style="text-align: center; margin: 20px 0;">
+                    <button class="btn" id="process-zip-btn" onclick="processZipFiles()" disabled>
+                        🚀 Lancer la concaténation
+                    </button>
+                    <button class="btn" id="clear-zip-btn" onclick="clearZipFiles()" style="background: #dc3545; display: none;">
+                        🗑️ Effacer tout
+                    </button>
+                </div>
+
+                <div class="progress-bar" id="concat-progress-bar" style="display: none;">
+                    <div class="progress-fill" id="concat-progress-fill"></div>
+                </div>
+
+                <div id="concat-status-messages"></div>
+
+                <div class="concat-results" id="concat-results" style="display: none;">
+                    <h3 style="grid-column: 1 / -1;">📦 Fichiers concaténés disponibles:</h3>
                 </div>
             </div>
-            
-            <div class="control-card">
-                <h3>🏗️ Contrôle 2: 8-SIG Dimension PBO</h3>
-                <p>
-                    Ce contrôle vérifie la cohérence entre le type d'infrastructure PBO et son nombre de logements :<br>
-                    • Récupération des PBO et comptage des logements FTTH associés<br>
-                    • Détermination du type d'infrastructure (SITE CLIENT, PB AERIEN, PB CHAMBRE, PB FACADE)<br>
-                    • Vérification des règles de capacité (≤12 pour C/SITE CLIENT, ≤8 pour A/F)
-                </p>
-                <div style="margin: 15px 0;">
-                    <button class="btn" id="control2-btn" onclick="executeControl2()">
-                        🔍 Étape 1: Identifier les non-conformités
-                    </button>
-                    <button class="btn" id="export2-errors-btn" onclick="exportControl2Errors()" disabled>
-                        📋 Exporter cas non conformes (pour requette_8.csv)
-                    </button>
-                </div>
-                <div style="margin: 15px 0; padding-top: 10px; border-top: 1px solid #eee;">
-                    <button class="btn" id="control2-complete-btn" onclick="executeControl2Complete()" disabled>
-                        ✅ Étape 3: Contrôle avec justifications
-                    </button>
-                    <button class="btn" id="export2-btn" onclick="exportControl2()" disabled>
-                        📊 Exporter rapport complet
-                    </button>
-                </div>
-                <div id="requette8-info" class="status-message status-info" style="display: none; margin-top: 10px;">
-                    💡 Chargez requette_8.csv pour enrichir les justifications
-                </div>
-            </div>
-        </div>
-
-        <div class="progress-bar" id="progress-bar" style="display: none;">
-            <div class="progress-fill" id="progress-fill"></div>
-        </div>
-
-        <div id="status-messages"></div>
-
-        <div class="results-section" id="results-section">
-            <h3>📊 Résultats du contrôle</h3>
-            <div id="results-content"></div>
         </div>
     </div>
 
     <script>
+        // Variables globales existantes
         let loadedFiles = {
             adresse: null,
             locale: null,
@@ -369,7 +527,434 @@
         let control1Results = null;
         let control2Results = null;
 
-        // Gestion du chargement des fichiers
+        // Variables pour la concaténation
+        let selectedZipFiles = [];
+        let concatenatedData = {};
+
+        // Définition des familles de fichiers
+        const familyDetection = {
+            't_baie': { patterns: ['baie', 't_baie', 't-baie', 'tbaie'], type: 'csv' },
+            't_cab_chem': { patterns: ['cab_chem', 't_cab_chem', 't-cab-chem', 'tcab_chem', 'tcabchem'], type: 'csv' },
+            't_cable': { patterns: ['cable', 't_cable', 't-cable', 'tcable'], type: 'csv' },
+            't_cassette': { patterns: ['cassette', 't_cassette', 't-cassette', 'tcassette'], type: 'csv' },
+            't_organisme': { patterns: ['organise', 't_organise', 't-organise', 'torganise', 'organisme'], type: 'csv' },
+            't_position': { patterns: ['position', 't_position', 't-position', 'tposition'], type: 'csv' },
+            't_ptech': { patterns: ['ptech', 't_ptech', 't-ptech', 'tptech'], type: 'csv' },
+            't_reference': { patterns: ['reference', 't_reference', 't-reference', 'treference'], type: 'csv' },
+            't_site': { patterns: ['site', 't_site', 't-site', 'tsite'], type: 'csv' },
+            't_tiroir': { patterns: ['tiroir', 't_tiroir', 't-tiroir', 'ttiroir'], type: 'csv' },
+            't_adresse': { patterns: ['adresse', 't_adresse', 't-adresse', 'tadresse'], type: 'dbf' },
+            't_cableline': { patterns: ['cableline', 't_cableline', 't-cableline', 'tcableline', 'cable_line'], type: 'dbf' },
+            't_cheminement': { patterns: ['cheminement', 't_cheminement', 't-cheminement', 'tcheminement'], type: 'dbf' },
+            't_empreinte': { patterns: ['empreinte', 't_empreinte', 't-empreinte', 'tempreinte'], type: 'dbf' },
+            't_noeud': { patterns: ['noeud', 't_noeud', 't-noeud', 'tnoeud'], type: 'dbf' },
+            't_point_leve': { patterns: ['point_leve', 'pointleve', 't_point_leve', 't-point-leve', 'tpointleve'], type: 'dbf' },
+            't_pointaccueil': { patterns: ['pointacceuil', 'pointaccueil', 't_pointacceuil', 't_pointaccueil', 't-pointacceuil', 'tpointacceuil'], type: 'dbf' },
+            't_tranchee': { patterns: ['tranchee', 't_tranchee', 't-tranchee', 'ttranchee'], type: 'dbf' },
+            't_zcoax': { patterns: ['zcoax', 't_zcoax', 't-zcoax', 'tzcoax'], type: 'dbf' },
+            't_zdep': { patterns: ['zdep', 't_zdep', 't-zdep', 'tzdep'], type: 'dbf' },
+            't_znro': { patterns: ['znro', 't_znro', 't-znro', 'tznro'], type: 'dbf' },
+            't_zpbo': { patterns: ['zpbo', 't_zpbo', 't-zpbo', 'tzpbo'], type: 'dbf' },
+            't_zsro': { patterns: ['zsro', 't_zsro', 't-zsro', 'tzsro'], type: 'dbf' },
+            't_ebp': { patterns: ['ebp', 't_ebp', 't-ebp', 'tebp'], type: 'csv' },
+            't_fibre': { patterns: ['fibre', 't_fibre', 't-fibre', 'tfibre'], type: 'csv' },
+            't_locale': { patterns: ['locale', 't_locale', 't-locale', 'tlocale', 'local'], type: 'csv' },
+            't_love': { patterns: ['love', 't_love', 't-love', 'tlove'], type: 'csv' }
+        };
+
+        // Fonction pour changer d'onglet
+        function switchTab(tabName) {
+            const tabs = document.querySelectorAll('.tab');
+            const tabContents = document.querySelectorAll('.tab-content');
+            
+            tabs.forEach(tab => tab.classList.remove('active'));
+            tabContents.forEach(content => content.classList.remove('active'));
+            
+            if (tabName === 'controls') {
+                tabs[0].classList.add('active');
+                document.getElementById('controls-tab').classList.add('active');
+            } else {
+                tabs[1].classList.add('active');
+                document.getElementById('concatenation-tab').classList.add('active');
+            }
+        }
+
+        // Gestion du drag & drop
+        const dropArea = document.getElementById('zip-drop-area');
+        
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            dropArea.addEventListener(eventName, preventDefaults, false);
+        });
+
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropArea.addEventListener(eventName, highlight, false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropArea.addEventListener(eventName, unhighlight, false);
+        });
+
+        function highlight(e) {
+            dropArea.classList.add('drag-over');
+        }
+
+        function unhighlight(e) {
+            dropArea.classList.remove('drag-over');
+        }
+
+        dropArea.addEventListener('drop', handleDrop, false);
+
+        function handleDrop(e) {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            handleZipFiles(files);
+        }
+
+        document.getElementById('zip-files-input').addEventListener('change', (e) => {
+            handleZipFiles(e.target.files);
+        });
+
+        function handleZipFiles(files) {
+            const zipFiles = Array.from(files).filter(file => file.name.endsWith('.zip'));
+            
+            if (zipFiles.length === 0) {
+                showConcatMessage('⚠️ Veuillez sélectionner des fichiers ZIP', 'error');
+                return;
+            }
+            
+            selectedZipFiles = [...selectedZipFiles, ...zipFiles];
+            displaySelectedZips();
+            
+            document.getElementById('process-zip-btn').disabled = false;
+            document.getElementById('clear-zip-btn').style.display = 'inline-block';
+        }
+
+        function displaySelectedZips() {
+            const listElement = document.getElementById('zip-files-list');
+            const itemsElement = document.getElementById('zip-files-items');
+            
+            listElement.style.display = 'block';
+            itemsElement.innerHTML = '';
+            
+            selectedZipFiles.forEach((file, index) => {
+                const item = document.createElement('div');
+                item.className = 'zip-file-item';
+                item.innerHTML = `
+                    <span>📦 ${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB)</span>
+                    <button onclick="removeZipFile(${index})" style="background: #dc3545; color: white; border: none; padding: 5px 10px; border-radius: 5px; cursor: pointer;">✕</button>
+                `;
+                itemsElement.appendChild(item);
+            });
+        }
+
+        function removeZipFile(index) {
+            selectedZipFiles.splice(index, 1);
+            displaySelectedZips();
+            
+            if (selectedZipFiles.length === 0) {
+                document.getElementById('zip-files-list').style.display = 'none';
+                document.getElementById('process-zip-btn').disabled = true;
+                document.getElementById('clear-zip-btn').style.display = 'none';
+            }
+        }
+
+        function clearZipFiles() {
+            selectedZipFiles = [];
+            concatenatedData = {};
+            document.getElementById('zip-files-list').style.display = 'none';
+            document.getElementById('process-zip-btn').disabled = true;
+            document.getElementById('clear-zip-btn').style.display = 'none';
+            document.getElementById('concat-results').style.display = 'none';
+            document.getElementById('zip-files-input').value = '';
+        }
+
+        function showConcatMessage(message, type) {
+            const messagesDiv = document.getElementById('concat-status-messages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `status-message status-${type}`;
+            messageDiv.textContent = message;
+            messagesDiv.appendChild(messageDiv);
+            
+            setTimeout(() => {
+                messageDiv.remove();
+            }, 5000);
+        }
+
+        function updateConcatProgress(percent) {
+            document.getElementById('concat-progress-bar').style.display = 'block';
+            document.getElementById('concat-progress-fill').style.width = percent + '%';
+        }
+
+        function hideConcatProgress() {
+            document.getElementById('concat-progress-bar').style.display = 'none';
+        }
+
+        function detectFamily(filename) {
+            const baseName = filename.toLowerCase();
+            const nameWithoutExt = baseName.split('.').slice(0, -1).join('.');
+            
+            for (const [familyName, config] of Object.entries(familyDetection)) {
+                for (const pattern of config.patterns) {
+                    if (nameWithoutExt.includes(pattern.toLowerCase())) {
+                        return familyName;
+                    }
+                }
+            }
+            
+            return null;
+        }
+
+        async function readDbfFile(arrayBuffer) {
+            try {
+                // Lecture manuelle du fichier DBF
+                const dataView = new DataView(arrayBuffer);
+                
+                // Vérifier l'en-tête DBF (premier octet doit être 0x03, 0x83, 0x8B, ou 0xF5)
+                const version = dataView.getUint8(0);
+                if (![0x03, 0x83, 0x8B, 0xF5].includes(version)) {
+                    throw new Error('Format de fichier DBF non valide');
+                }
+                
+                // Lire les informations de l'en-tête
+                const numRecords = dataView.getUint32(4, true); // little-endian
+                const headerSize = dataView.getUint16(8, true);
+                const recordSize = dataView.getUint16(10, true);
+                
+                if (numRecords === 0) {
+                    return { data: [], headers: [] };
+                }
+                
+                // Lire les définitions de champs
+                const fields = [];
+                let offset = 32; // L'en-tête commence à 32 octets
+                
+                while (offset < headerSize - 1) {
+                    const fieldName = new TextDecoder('ascii').decode(
+                        new Uint8Array(arrayBuffer, offset, 11)
+                    ).replace(/\0/g, '');
+                    
+                    const fieldType = String.fromCharCode(dataView.getUint8(offset + 11));
+                    const fieldLength = dataView.getUint8(offset + 16);
+                    const fieldDecimal = dataView.getUint8(offset + 17);
+                    
+                    if (fieldName) {
+                        fields.push({
+                            name: fieldName,
+                            type: fieldType,
+                            length: fieldLength,
+                            decimal: fieldDecimal
+                        });
+                    }
+                    
+                    offset += 32;
+                }
+                
+                // Lire les enregistrements
+                const records = [];
+                const recordsStartOffset = headerSize;
+                
+                for (let i = 0; i < numRecords; i++) {
+                    const recordOffset = recordsStartOffset + (i * recordSize);
+                    
+                    // Vérifier que l'enregistrement n'est pas supprimé (premier octet != 0x2A)
+                    const deletedFlag = dataView.getUint8(recordOffset);
+                    if (deletedFlag === 0x2A) continue; // Enregistrement supprimé
+                    
+                    const record = {};
+                    let fieldOffset = recordOffset + 1; // +1 pour ignorer le flag de suppression
+                    
+                    fields.forEach(field => {
+                        const fieldData = new Uint8Array(arrayBuffer, fieldOffset, field.length);
+                        let value = new TextDecoder('utf-8', { fatal: false }).decode(fieldData).trim();
+                        
+                        // Conversion selon le type de champ
+                        switch (field.type) {
+                            case 'N': // Numérique
+                            case 'F': // Float
+                                value = value === '' ? 0 : parseFloat(value) || 0;
+                                break;
+                            case 'L': // Logique
+                                value = ['T', 't', 'Y', 'y', '1'].includes(value);
+                                break;
+                            case 'D': // Date
+                                if (value && value.length === 8) {
+                                    const year = value.substring(0, 4);
+                                    const month = value.substring(4, 6);
+                                    const day = value.substring(6, 8);
+                                    value = `${year}-${month}-${day}`;
+                                }
+                                break;
+                            default: // Chaîne de caractères
+                                value = value.replace(/\0/g, '');
+                        }
+                        
+                        record[field.name] = value;
+                        fieldOffset += field.length;
+                    });
+                    
+                    records.push(record);
+                }
+                
+                return {
+                    data: records,
+                    headers: fields.map(f => f.name)
+                };
+                
+            } catch (error) {
+                console.error('Erreur lors de la lecture du fichier DBF:', error);
+                return null;
+            }
+        }
+
+        async function processZipFiles() {
+            if (selectedZipFiles.length === 0) {
+                showConcatMessage('⚠️ Aucun fichier ZIP sélectionné', 'error');
+                return;
+            }
+            
+            showConcatMessage('🔄 Début du traitement des fichiers ZIP...', 'info');
+            updateConcatProgress(0);
+            
+            concatenatedData = {};
+            const families = {};
+            let processedFiles = 0;
+            const totalFiles = selectedZipFiles.length;
+            
+            for (const zipFile of selectedZipFiles) {
+                showConcatMessage(`📦 Traitement de ${zipFile.name}...`, 'info');
+                
+                try {
+                    const zip = await JSZip.loadAsync(zipFile);
+                    const zipName = zipFile.name.replace('.zip', '');
+                    
+                    for (const [path, file] of Object.entries(zip.files)) {
+                        if (file.dir) continue;
+                        
+                        const filename = path.split('/').pop();
+                        const ext = filename.split('.').pop().toLowerCase();
+                        
+                        if (ext === 'csv' || ext === 'dbf') {
+                            const family = detectFamily(filename);
+                            if (family) {
+                                let parsedData = null;
+                                
+                                if (ext === 'csv') {
+                                    // Traitement CSV existant
+                                    const content = await file.async('string');
+                                    const parsed = Papa.parse(content, {
+                                        header: true,
+                                        skipEmptyLines: true,
+                                        delimiter: ';'
+                                    });
+                                    parsedData = parsed.data;
+                                    
+                                } else if (ext === 'dbf') {
+                                    // Nouveau traitement DBF
+                                    showConcatMessage(`🔄 Conversion DBF en cours: ${filename}...`, 'info');
+                                    const arrayBuffer = await file.async('arraybuffer');
+                                    const dbfResult = await readDbfFile(arrayBuffer);
+                                    
+                                    if (dbfResult) {
+                                        parsedData = dbfResult.data;
+                                        showConcatMessage(`✅ DBF converti: ${filename} (${parsedData.length} lignes)`, 'success');
+                                    } else {
+                                        showConcatMessage(`⚠️ Impossible de lire le fichier DBF: ${filename}`, 'error');
+                                        continue;
+                                    }
+                                }
+                                
+                                if (parsedData && parsedData.length > 0) {
+                                    // Ajouter les colonnes source
+                                    parsedData.forEach(row => {
+                                        row.source_pm = zipName;
+                                        row.source_file = filename;
+                                    });
+                                    
+                                    if (!families[family]) {
+                                        families[family] = [];
+                                    }
+                                    families[family].push(...parsedData);
+                                    
+                                    showConcatMessage(`✅ ${filename} traité (${parsedData.length} lignes)`, 'success');
+                                }
+                            }
+                        }
+                    }
+                    
+                } catch (error) {
+                    showConcatMessage(`❌ Erreur lors du traitement de ${zipFile.name}: ${error.message}`, 'error');
+                }
+                
+                processedFiles++;
+                updateConcatProgress((processedFiles / totalFiles) * 100);
+            }
+            
+            // Stocker les données concaténées
+            concatenatedData = families;
+            
+            // Afficher les résultats
+            displayConcatResults();
+            
+            hideConcatProgress();
+            showConcatMessage(`✅ Traitement terminé! ${Object.keys(families).length} familles de fichiers créées.`, 'success');
+        }
+
+        function displayConcatResults() {
+            const resultsDiv = document.getElementById('concat-results');
+            resultsDiv.style.display = 'grid';
+            resultsDiv.innerHTML = '<h3 style="grid-column: 1 / -1;">📦 Fichiers concaténés disponibles:</h3>';
+            
+            for (const [family, data] of Object.entries(concatenatedData)) {
+                const card = document.createElement('div');
+                card.className = 'concat-result-card';
+                card.innerHTML = `
+                    <h4>${family}</h4>
+                    <p>📊 ${data.length} lignes</p>
+                    <button class="download-btn" onclick="downloadConcatenatedFile('${family}', 'csv')">
+                        💾 Télécharger CSV
+                    </button>
+                    <button class="download-btn" onclick="downloadConcatenatedFile('${family}', 'xlsx')">
+                        📑 Télécharger Excel
+                    </button>
+                `;
+                resultsDiv.appendChild(card);
+            }
+        }
+
+        function downloadConcatenatedFile(family, format) {
+            const data = concatenatedData[family];
+            if (!data || data.length === 0) {
+                showConcatMessage('⚠️ Aucune donnée à télécharger', 'error');
+                return;
+            }
+            
+            const filename = `${family}_combined.${format}`;
+            
+            if (format === 'csv') {
+                const csv = Papa.unparse(data, {
+                    delimiter: ';'
+                });
+                const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(blob);
+                link.download = filename;
+                link.click();
+            } else if (format === 'xlsx') {
+                const ws = XLSX.utils.json_to_sheet(data);
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, family);
+                XLSX.writeFile(wb, filename);
+            }
+            
+            showConcatMessage(`✅ Téléchargement de ${filename} démarré`, 'success');
+        }
+
+        // Gestion du chargement des fichiers (code existant)
         document.getElementById('adresse-file').addEventListener('change', (e) => loadFile(e, 'adresse'));
         document.getElementById('locale-file').addEventListener('change', (e) => loadFile(e, 'locale'));
         document.getElementById('ptech-file').addEventListener('change', (e) => loadFile(e, 'ptech'));
